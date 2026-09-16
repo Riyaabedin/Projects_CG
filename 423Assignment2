@@ -1,0 +1,333 @@
+from OpenGL.GL import *
+from OpenGL.GLUT import *
+from OpenGL.GLU import *
+import sys
+import time
+import random
+
+WINDOW_WIDTH= 500
+WINDOW_HEIGHT = 600
+
+play__now = 0
+pausing__here= 1
+pausing__here = 2
+
+currn = play__now
+keepingcount= 0
+canscam = False
+lftime = time.time()
+score=0
+
+traaap_WIDTH = 75
+traaap_HEIGHT = 15
+traaap_x = (WINDOW_WIDTH- traaap_WIDTH) / 1.75
+traaap_y = 25
+traaap_speed = 325.00  
+
+Rombusangle_WIDTH = 14
+Rombusangle_HEIGHT = 18
+Rombusangle_x = random.randint(16, WINDOW_WIDTH- 16 - Rombusangle_WIDTH)
+Rombusangle_y = WINDOW_HEIGHT - 50
+Rombusangle_speed = 140.00
+Rombusangle_color = [random.uniform(0.5, 1.0), random.uniform(0.5, 1.0), random.uniform(0.5, 1.0)]
+
+clickbuttons= {'left': False, 'right': False}
+
+
+def z__f(x1, y1, x2, y2):
+    dx = x2 - x1
+    dy = y2 - y1
+    if abs(dx) >= abs(dy):
+        if dx >= 0 and dy >= 0:
+            return 0
+        elif dx < 0 and dy >= 0:
+            return 3
+        elif dx < 0 and dy < 0:
+            return 4
+        else:
+            return 7
+    else:
+        if dx >= 0 and dy >= 0:
+            return 1
+        elif dx < 0 and dy >= 0:
+            return 2
+        elif dx < 0 and dy < 0:
+            return 5
+        else:
+            return 6
+
+
+def zerozoneconversion(x, y, zone):
+    if zone == 0:
+        return x, y
+    elif zone == 1:
+        return y, x
+    elif zone == 2:
+        return y, -x
+    elif zone == 3:
+        return -x, y
+    elif zone == 4:
+        return -x, -y
+    elif zone == 5:
+        return -y, -x
+    elif zone == 6:
+        return -y, x
+    elif zone == 7:
+        return x, -y
+    return x, y
+
+
+def conversionofzonezero(x, y, zone):
+    if zone == 0:
+        return x, y
+    elif zone == 1:
+        return y, x
+    elif zone == 2:
+        return -y, x
+    elif zone == 3:
+        return -x, y
+    elif zone == 4:
+        return -x, -y
+    elif zone == 5:
+        return -y, -x
+    elif zone == 6:
+        return y, -x
+    elif zone == 7:
+        return x, -y
+    return x, y
+
+
+def pixelsdr(x, y):
+    glBegin(GL_POINTS)
+    glVertex2i(int(x), int(y))
+    glEnd()
+
+
+def mpld(x1, y1, x2, y2):
+    x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
+    zone = z__f(x1, y1, x2, y2)
+
+
+    x1_0, y1_0 = zerozoneconversion(x1, y1, zone)
+    x2_0, y2_0 = zerozoneconversion(x2, y2, zone)
+
+    if x1_0 > x2_0:
+        x1_0, x2_0 = x2_0, x1_0
+        y1_0, y2_0 = y2_0, y1_0
+
+    dx = x2_0 - x1_0
+    dy = y2_0 - y1_0
+
+    d = 2 * dy - dx
+    incE = 2 * dy
+    incNE = 2 * (dy - dx)
+
+    x = x1_0
+    y = y1_0
+
+   
+    orig_x, orig_y = conversionofzonezero(x, y, zone)
+    pixelsdr(orig_x, orig_y)
+
+    while x < x2_0:
+        if d <= 0:
+            d += incE
+            x += 1
+        else:
+            d += incNE
+            x += 1
+            y += 1
+
+        orig_x, orig_y = conversionofzonezero(x, y, zone)
+        pixelsdr(orig_x, orig_y)
+
+
+def checkingcollision(x1, y1, w1, h1, x2, y2, w2, h2):
+    return (x1 < x2 + w2 and
+            x1 + w1 > x2 and
+            y1 < y2 + h2 and
+            y1 + h1 > y2)
+
+
+def rombusreset():
+    global Rombusangle_x, Rombusangle_y, Rombusangle_color
+    Rombusangle_x = random.randint(18, WINDOW_WIDTH- 18- Rombusangle_WIDTH)
+    Rombusangle_y = WINDOW_HEIGHT - 55
+    Rombusangle_color = [random.uniform(0.5, 1.0), random.uniform(0.5, 1.0), random.uniform(0.5, 1.0)]
+
+
+def redo_it():
+    global keepingcount, Rombusangle_speed, currn, traaap_x,score
+    keepingcount = 0
+    Rombusangle_speed = 140.0
+    currn = play__now
+    traaap_x = (WINDOW_WIDTH- traaap_WIDTH) / 1.75
+    rombusreset()
+    print("Again Start please")
+
+
+def trapsketch():
+    if currn == pausing__here:
+        glColor3f(1.0, 0.0, 0.0)  
+    else:
+        glColor3f(1.0, 1.0, 1.0) 
+
+    x, y = traaap_x, traaap_y
+    w, h = traaap_WIDTH, traaap_HEIGHT
+
+    mpld(x, y + h, x + 10, y)
+    mpld(x + 10, y, x + w - 10, y)
+    mpld(x + w - 10, y, x + w, y + h)
+    mpld(x, y + h, x + w, y + h)
+
+
+def draw_Rombusangle():
+    if currn == pausing__here:
+        return
+
+    glColor3f(Rombusangle_color[0], Rombusangle_color[1], Rombusangle_color[2])
+    x, y = Rombusangle_x, Rombusangle_y
+    w, h = Rombusangle_WIDTH, Rombusangle_HEIGHT
+    mpld(x + w / 2, y + h, x, y + h / 2)
+    mpld(x, y + h / 2, x + w / 2, y)
+    mpld(x + w / 2, y, x + w, y + h / 2)
+    mpld(x + w, y + h / 2, x + w / 2, y + h)
+
+
+def upside__functions():
+    glColor3f(0.0, 0.8, 0.8)
+    mpld(18, 540, 40, 540)
+    mpld(18, 540, 32, 570)
+    mpld(18, 540, 32, 535)
+
+    glColor3f(1.0, 0.75, 0.0)
+    if currn == play__now:
+        mpld(240, 545, 240, 575)
+        mpld(255, 545, 255, 575)
+    else:
+        mpld(240, 545, 240, 575)
+        mpld(240, 575, 260, 560)
+        mpld(260, 560, 240, 545)
+
+    glColor3f(1.0, 0.0, 0.0)
+    mpld(450, 545, 480, 575)
+    mpld(450, 575, 480, 545)
+
+def key__manage(key, x, y):
+    global canscam
+    if key == b'c' or key == b'C':
+        canscam = not canscam
+        print(f"Can Scam: {'ON' if canscam else 'OFF'}")
+
+
+def key_elite(key, x, y):
+    if key == GLUT_KEY_LEFT:
+       clickbuttons['left'] = True
+    elif key == GLUT_KEY_RIGHT:
+       clickbuttons['right'] = True
+
+
+def key_upelite(key, x, y):
+    if key == GLUT_KEY_LEFT:
+       clickbuttons['left'] = False
+    elif key == GLUT_KEY_RIGHT:
+       clickbuttons['right'] = False
+
+
+def mouseclick(func, state, x, y):
+    global currn
+    if func == GLUT_LEFT_BUTTON and state == GLUT_DOWN:
+        ogl_x = x
+        ogl_y = WINDOW_HEIGHT - y
+
+        if 15 <= ogl_x <= 55 and 540 <= ogl_y <= 580:
+            redo_it()
+
+        elif 220 <= ogl_x <= 260 and 530 <= ogl_y <= 570:
+            if currn == play__now:
+                currn = pausing__here
+            elif currn == pausing__here:
+                currn = play__now
+        elif 430 <= ogl_x <= 480 and 530 <= ogl_y <= 570:
+            print(f"Goodbye! Score: {score}")
+            glutLeaveMainLoop()
+
+def setup_projection():
+    glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT)
+    glMatrixMode(GL_PROJECTION)
+    glLoadIdentity()
+    glOrtho(0, WINDOW_WIDTH, 0, WINDOW_HEIGHT, -1, 1)
+    glMatrixMode(GL_MODELVIEW)
+
+
+def display():
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+    glLoadIdentity()
+    setup_projection()
+
+    glPointSize(2) 
+
+    upside__functions()
+    trapsketch()
+    draw_Rombusangle() 
+
+    glutSwapBuffers()
+
+
+def animate():
+    global lftime, traaap_x, Rombusangle_y, score, Rombusangle_speed, currn
+
+    current_time = time.time()
+    dt = current_time - lftime
+    lftime = current_time
+
+    if currn == play__now:
+        if canscam:
+            target_x = Rombusangle_x + (Rombusangle_WIDTH / 2.0) - (traaap_WIDTH / 2.0)
+            if traaap_x < target_x:
+                traaap_x += traaap_speed * dt
+                if traaap_x > target_x:
+                    traaap_x = target_x
+            elif traaap_x > target_x:
+                traaapx -= traaap_speed * dt
+                if traaap_x < target_x:
+                    traaap_x = target_x
+        else:
+            if clickbuttons['left']:
+                traaap_x -= traaap_speed * dt
+            if clickbuttons['right']:
+                traaap_x += traaap_speed * dt
+        traaap_x = max(0, min(WINDOW_WIDTH- traaap_WIDTH, traaap_x))
+        Rombusangle_y -= Rombusangle_speed * dt
+        
+        if checkingcollision(traaap_x, traaap_y, traaap_WIDTH, traaap_HEIGHT,
+                                 Rombusangle_x, Rombusangle_y, Rombusangle_WIDTH, Rombusangle_HEIGHT):
+            score += 1
+            print(f"Score: {score}")
+            Rombusangle_speed += 15.0
+            rombusreset()
+        elif Rombusangle_y < 0:
+            currn = pausing__here
+            print(f"Game Finished!!! Final Score: {score}")
+
+    glutPostRedisplay()
+
+def main():
+    glutInit()
+    glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH)
+    glutInitWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT)
+    glutInitWindowPosition(100, 100)
+    glutCreateWindow(b"Catch the Rombusangles!")
+
+    glutDisplayFunc(display)
+    glutIdleFunc(animate)
+    glutKeyboardFunc(key__manage)
+    glutSpecialFunc(key_elite)
+    glutSpecialUpFunc(key_upelite)
+    glutMouseFunc(mouseclick)
+
+    glutMainLoop()
+
+
+if __name__ == "__main__":
+    main()
